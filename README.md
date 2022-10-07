@@ -1,1 +1,3 @@
-# ADL_Fall2022_HW1
+# Homework 1
+> Applied Deep Learning Fall 2022
+
