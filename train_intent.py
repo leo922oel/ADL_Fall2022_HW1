@@ -36,11 +36,13 @@ def train_epoch(args, model, dataloader, optim):
         ce.udpate(output["loss"], batch["intent"].size(0))
         acc.update(batch["intent"].detach().cpu(), output["pred_labels"].detach().cpu())
         loss = output["loss"]
+
         loss.backward()
+        optim.step()
 
     acc.eval()
-    print("Train loss: {:6.4f}\t Acc: {:6.4f}".format(ce, acc))
-    return ce, acc
+    print("Train loss: {:6.4f}\t Acc: {:6.4f}".format(ce.avg, acc.acc))
+    return ce.avg, acc.acc
 
 @torch.no_grad()
 def validation(args, model, dataloader):
@@ -58,8 +60,8 @@ def validation(args, model, dataloader):
         acc.update(batch["intent"].detach().cpu(), output["pred_labels"].detach().cpu())
 
     acc.eval()
-    print("Train loss: {:6.4f}\t Acc: {:6.4f}".format(ce, acc))
-    return ce, acc
+    print("Train loss: {:6.4f}\t Acc: {:6.4f}".format(ce.avg, acc.acc))
+    return ce.avg, acc.acc
 
 def main(args):
     torch.manual_seed(args.seed)
