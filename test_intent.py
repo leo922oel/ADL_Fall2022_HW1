@@ -23,6 +23,7 @@ def main(args):
         vocab: Vocab = pickle.load(f)
 
     intent_idx_path = args.cache_dir / "intent2idx.json"
+    intent_idx_path.mkdir(parents=True, exist_ok=True)
     intent2idx: Dict[str, int] = json.loads(intent_idx_path.read_text())
 
     data = json.loads(args.test_file.read_text())
