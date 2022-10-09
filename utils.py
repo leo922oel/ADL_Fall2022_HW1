@@ -43,6 +43,20 @@ def pad_to_len(seqs: List[List[int]], to_len: int, padding: int) -> List[List[in
     paddeds = [seq[:to_len] + [padding] * max(0, to_len - len(seq)) for seq in seqs]
     return paddeds
 
+class CEMetrics(object):
+    def __init__(self, eps=1e-8):
+        self.eps = eps
+        self.loss = 0
+        self.sum = 0
+        self.n = 0
+        self.avg = 0
+    
+    def udpate(self, loss, n):
+        self.loss = loss
+        self.sum += loss * n
+        self.n += n
+        self.avg = self.sum / self.n + self.eps
+
 class IntentMetrics(object):
     def __init__(self, eps=1e-8):
         self.eps = eps
