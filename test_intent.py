@@ -1,17 +1,24 @@
 import json
 import pickle
+import random
+import numpy as np
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Dict
 
 import torch
 
+from torch.utils.data import DataLoader
 from dataset import SeqClsDataset
 from model import SeqClassifier
 from utils import Vocab
 
 
 def main(args):
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
+
     with open(args.cache_dir / "vocab.pkl", "rb") as f:
         vocab: Vocab = pickle.load(f)
 
@@ -21,6 +28,7 @@ def main(args):
     data = json.loads(args.test_file.read_text())
     dataset = SeqClsDataset(data, vocab, intent2idx, args.max_len)
     # TODO: crecate DataLoader for test dataset
+    dataloader = DataLoader(dataset, args.batch_size, shuffle=False, collate_fn=dataset.collate_fn)
 
     embeddings = torch.load(args.cache_dir / "embeddings.pt")
 
@@ -31,15 +39,30 @@ def main(args):
         args.dropout,
         args.bidirectional,
         dataset.num_classes,
-    )
+    ).to(args.device)
     model.eval()
 
     ckpt = torch.load(args.ckpt_path)
     # load weights into model
+    model.load_state_dict(ckpt)
 
+    ids = []
+    labels = []
     # TODO: predict dataset
+    for batch in dataloader:
+        batch["text"] = batch["text"].to(args.device)
+        batch["intent"] = batch["intent"].to(args.device)
+        output = model(batch)
+        ids = ids + output["id"]
+        labels = ids + output["pred_labels"].tolist()
 
     # TODO: write prediction to file (args.pred_file)
+    if args.pred_file.parent:
+        args.pred_file.parent.mkdir(parent=True, exist_ok=True)
+    with open(args.pred_file, 'w') as f:
+        f.write('id,intent\n')
+        for id, label in zip(ids, labels):
+            f.write("%s,%s\n" %(id, dataset.idx2label(labels)))
 
 
 def parse_args() -> Namespace:
@@ -79,6 +102,7 @@ def parse_args() -> Namespace:
     parser.add_argument(
         "--device", type=torch.device, help="cpu, cuda, cuda:0, cuda:1", default="cpu"
     )
+    parser.add_argument("--seed", type=int, default=1000, help="seed for testing")
     args = parser.parse_args()
     return args
 
