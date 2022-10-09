@@ -84,6 +84,6 @@ class SeqTaggingClsDataset(SeqClsDataset):
         else: 
             batch["tags"] = [[0]*self.max_len] * len(sorted_samples)
         batch["tags"] = torch.tensor(batch["tags"])
-        # batch["mask"] = batch["tokens"].gt(0).float()
+        batch["mask"] = batch["tokens"].gt(0).float()
 
         return batch
