@@ -54,8 +54,8 @@ def main(args):
         batch["text"] = batch["text"].to(args.device)
         batch["intent"] = batch["intent"].to(args.device)
         output = model(batch)
-        ids = ids + output["id"]
-        labels = ids + output["pred_labels"].tolist()
+        ids += batch["id"]
+        labels += output["pred_labels"].tolist()
 
     # TODO: write prediction to file (args.pred_file)
     if args.pred_file.parent:
@@ -63,8 +63,7 @@ def main(args):
     with open(args.pred_file, 'w') as f:
         f.write('id,intent\n')
         for id, label in zip(ids, labels):
-            f.write("%s,%s\n" %(id, dataset.idx2label(labels)))
-
+            f.write("%s,%s\n" %(id, dataset.idx2label(label)))
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
