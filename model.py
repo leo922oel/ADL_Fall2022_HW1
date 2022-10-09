@@ -63,7 +63,7 @@ class SeqClassifier(torch.nn.Module):
         if self.bidrect: h_ = torch.cat((h_[-1], h_[-2]), axis=-1)
         else: h_ = h_[-1]
 
-        pred_logits = [self.classifier(h)]
+        pred_logits = [self.classifier(h_)]
 
         output["pred_logists"] = pred_logits
         output["pred_labels"] = pred_logits[-1].max(1, keepdim=True)[1].reshape(-1)
