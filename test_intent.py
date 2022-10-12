@@ -14,6 +14,7 @@ from model import SeqClassifier
 from utils import Vocab
 
 
+
 def main(args):
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
