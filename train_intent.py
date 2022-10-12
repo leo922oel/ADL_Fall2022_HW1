@@ -14,6 +14,8 @@ from dataset import SeqClsDataset
 from r11946013.model import SeqClassifier
 from utils import Vocab, CEMetrics, IntentMetrics
 
+from seqeval.metrics import classification_report
+
 TRAIN = "train"
 DEV = "eval"
 SPLITS = [TRAIN, DEV]
@@ -50,14 +52,20 @@ def validation(args, model, dataloader):
     ce = CEMetrics()
     acc = IntentMetrics()
 
+    ground = []
+    pred = []
     for batch in dataloader:
         batch["text"] = batch["text"].to(args.device)
         batch["intent"] = batch["intent"].to(args.device)
 
         output = model(batch)
 
+        ground += batch["intent"]
+        pred += output["pred_labels"].tolist()
         ce.udpate(output["loss"], batch["intent"].size(0))
         acc.update(batch["intent"].detach().cpu(), output["pred_labels"].detach().cpu())
+
+    classification_report(ground, pred)
 
     acc.eval()
     print("Train loss: {:6.4f}\t Acc: {:6.4f}".format(ce.avg, acc.acc))

@@ -15,6 +15,8 @@ from dataset import SeqTaggingClsDataset
 from model import SeqTagger
 from utils import Vocab, CEMetrics, SlotMetrics
 
+from seqeval.metrics import classification_report
+
 TRAIN = "train"
 DEV = "eval"
 SPLITS = [TRAIN, DEV]
@@ -53,6 +55,8 @@ def validation(args, model, dataloader):
     ce = CEMetrics()
     acc = SlotMetrics()
 
+    ground = []
+    pred = []
     for batch in dataloader:
         batch["tokens"] = batch["tokens"].to(args.device)
         batch["tags"] = batch["tags"].to(args.device)
@@ -60,8 +64,12 @@ def validation(args, model, dataloader):
 
         output = model(batch)
 
+        ground += batch["tags"].tolist()
+        pred += output["pred_labels"].cpu().tolist()
         ce.udpate(output["loss"], batch["tokens"].size(0))
         acc.update(batch["tags"].cpu(), output["pred_labels"].cpu(), batch["mask"].cpu())
+
+    classification_report(ground, pred)
 
     acc.eval()
     print("Train loss: {:6.4f}\t Joint Acc: {:6.4f}\t Token Acc: {:6.4f}".format(ce.avg, acc.joi_acc, acc.tok_acc))
