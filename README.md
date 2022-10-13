@@ -1,4 +1,4 @@
-# Homework 1
+# Homework 1 - Intent Classification & Slot Tagging
 > Applied Deep Learning Fall 2022
 ## Shortcuts
 - [Kaggle - Intent Classification](https://www.kaggle.com/competitions/intent-classification-ntu-adl-hw1-fall-2022)
