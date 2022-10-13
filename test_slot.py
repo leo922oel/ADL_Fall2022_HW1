@@ -26,7 +26,7 @@ def main(args):
     slot_idx_path = args.cache_dir / "tag2idx.json"
     tag2idx: Dict[str, int] = json.loads(slot_idx_path.read_text())
 
-    data = json.loads(args.data_dir.read_text())
+    data = json.loads(args.test_file.read_text())
     dataset = SeqTaggingClsDataset(data, vocab, tag2idx, args.max_len)
     dataloader = DataLoader(dataset, args.batch_size, shuffle=False, collate_fn=dataset.collate_fn)
 
@@ -42,7 +42,7 @@ def main(args):
     ).to(args.device)
     model.eval()
 
-    ckpt = torch.load(args.ckpt_dir)
+    ckpt = torch.load(args.ckpt_path)
     # load weights into model
     model.load_state_dict(ckpt)
 
@@ -77,10 +77,10 @@ def main(args):
 def parse_args() -> Namespace:
     parser = ArgumentParser()
     parser.add_argument(
-        "--data_dir",
+        "--test_file",
         type=Path,
         help="Directory to the dataset.",
-        default="./data/slot/",
+        default="./data/slot/test.json",
     )
     parser.add_argument(
         "--cache_dir",
@@ -89,18 +89,19 @@ def parse_args() -> Namespace:
         default="./cache/slot/",
     )
     parser.add_argument(
-        "--ckpt_dir",
+        "--ckpt_path",
         type=Path,
         help="Directory to save the model file.",
-        default="./ckpt/slot/",
+        # default="./ckpt/slot/",
+        required=True
     )
-    parser.add_argument("--pred_file", type=Path, default="pred.slot.csv")
+    parser.add_argument("--pred_file", type=Path, default="pred_slot.csv")
 
     # data
     parser.add_argument("--max_len", type=int, default=128)
 
     # model
-    parser.add_argument("--hidden_size", type=int, default=512)
+    parser.add_argument("--hidden_size", type=int, default=256)
     parser.add_argument("--num_layers", type=int, default=2)
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--bidirectional", type=bool, default=True)

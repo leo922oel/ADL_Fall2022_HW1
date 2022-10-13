@@ -71,7 +71,8 @@ def parse_args() -> Namespace:
         "--test_file",
         type=Path,
         help="Path to the test file.",
-        required=True
+        # required=True
+        default="./data/intent/test.json",
     )
     parser.add_argument(
         "--cache_dir",
@@ -84,8 +85,9 @@ def parse_args() -> Namespace:
         type=Path,
         help="Path to model checkpoint.",
         required=True
+        # default="./ckpt/intent/best-model.pth",
     )
-    parser.add_argument("--pred_file", type=Path, default="pred.intent.csv")
+    parser.add_argument("--pred_file", type=Path, default="pred_intent.csv")
 
     # data
     parser.add_argument("--max_len", type=int, default=128)

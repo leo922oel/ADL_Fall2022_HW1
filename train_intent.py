@@ -146,7 +146,7 @@ def parse_args() -> Namespace:
         help="Directory to save the model file.",
         default="./ckpt/intent/",
     )
-    parser.add_argument("--name", type=str, default="1012", )
+    parser.add_argument("--name", type=str, default="1013", )
 
     # data
     parser.add_argument("--max_len", type=int, default=128)
