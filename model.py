@@ -44,9 +44,8 @@ class SeqClassifier(torch.nn.Module):
     @property
     def encoder_output_size(self) -> int:
         # TODO: calculate the output dimension of rnn
-        num_direct = 2 if self.bidirectional else 1
-        self.output_dim = num_direct * self.hidden_size
-        return self.output_dim
+        if self.bidrect: return 2*self.hidden_size
+        return self.hidden_size
 
     def forward(self, batch) -> Dict[str, torch.Tensor]:
         # TODO: implement model forward
@@ -82,14 +81,14 @@ class SeqTagger(SeqClassifier):
         bidirectional: bool,
         num_class: int,
     ) -> None:
-        super(SeqTagger, self).__init__()
-        self.embed = Embedding.from_pretrained(embeddings, freeze=False)
-        self.embed_dim = embeddings.size(1)
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
-        self.dropout = dropout
-        self.bidrect = bidirectional
-        self.num_class = num_class
+        super(SeqTagger, self).__init__(embeddings, hidden_size, num_layers, dropout, bidirectional, num_class)
+        # self.embed = Embedding.from_pretrained(embeddings, freeze=False)
+        # self.embed_dim = embeddings.size(1)
+        # self.hidden_size = hidden_size
+        # self.num_layers = num_layers
+        # self.dropout = dropout
+        # self.bidrect = bidirectional
+        # self.num_class = num_class
 
         cnn = []
         for i in range(num_layers):
@@ -115,12 +114,11 @@ class SeqTagger(SeqClassifier):
             Linear(self.encoder_output_size, self.num_class)
         )
 
-    @property
-    def encoder_output_size(self) -> int:
+    # @property
+    # def encoder_output_size(self) -> int:
         # if self.num_layers <= 0: return self.embed_dim
-        num_direct = 2 if self.bidirectional else 1
-        self.output_dim = num_direct * self.hidden_size
-        return self.output_dim
+        # if self.bidrect: return 2*self.hidden_size
+        # return self.hidden_size
     
     def _get_idx(self, tokens_len):
         batch_idx = torch.cat([torch.full((len, ), i) for i, len in enumerate(tokens_len)])
@@ -149,7 +147,7 @@ class SeqTagger(SeqClassifier):
         batch["mask"] = batch["mask"][:, :X.size(1)]
         batch["tags"] = batch["tags"][:, :X.size(1)]
 
-        pred_logits = [self.classifier(X)]
+        pred_logits = self.tag_classifier(X)
         idx = self._get_idx(batch["len"])
         output["loss"] = F.cross_entropy(pred_logits[idx], y[idx]) # ? y.long()
 
