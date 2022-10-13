@@ -87,7 +87,8 @@ class SlotMetrics(object):
         self.tok_cor += batch_cor.sum().long().item()
         self.joi_cor += batch_cor.eq(len).sum().item()
         self.tok_n += mask.sum().long().item()
-        self.joi_n += len(ground)
+        count_ground = ground.numpy()
+        self.joi_n += ground.size(dim=0)
 
     def eval(self):
         self.tok_acc = self.tok_cor / (self.tok_n + self.eps)

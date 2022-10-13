@@ -24,10 +24,9 @@ def main(args):
         vocab: Vocab = pickle.load(f)
 
     slot_idx_path = args.cache_dir / "tag2idx.json"
-    slot_idx_path.mkdir(parents=True, exist_ok=True)
     tag2idx: Dict[str, int] = json.loads(slot_idx_path.read_text())
 
-    data = json.loads(args.test_file.read_text())
+    data = json.loads(args.data_dir.read_text())
     dataset = SeqTaggingClsDataset(data, vocab, tag2idx, args.max_len)
     dataloader = DataLoader(dataset, args.batch_size, shuffle=False, collate_fn=dataset.collate_fn)
 
@@ -43,7 +42,7 @@ def main(args):
     ).to(args.device)
     model.eval()
 
-    ckpt = torch.load(args.ckpt_path)
+    ckpt = torch.load(args.ckpt_dir)
     # load weights into model
     model.load_state_dict(ckpt)
 
@@ -63,7 +62,7 @@ def main(args):
         lens += batch["mask"].sum(-1).long().cpu().tolist()
 
     if args.pred_file.parent:
-        args.pred_file.parent.mkdir(parent=True, exist_ok=True)
+        args.pred_file.parent.mkdir(parents=True, exist_ok=True)
     with open(args.pred_file, 'w') as f:
         f.write('id,tags\n')
         for id, tag, len in zip(ids, tags, lens):

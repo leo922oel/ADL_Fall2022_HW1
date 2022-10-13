@@ -64,12 +64,12 @@ def validation(args, model, dataloader):
 
         output = model(batch)
 
-        ground += batch["tags"].tolist()
-        pred += output["pred_labels"].cpu().tolist()
+        # ground += batch["tags"].tolist()
+        # pred += output["pred_labels"].cpu().tolist()
         ce.udpate(output["loss"], batch["tokens"].size(0))
         acc.update(batch["tags"].cpu(), output["pred_labels"].cpu(), batch["mask"].cpu())
 
-    classification_report(ground, pred)
+    # classification_report(ground, pred)
 
     acc.eval()
     print("Train loss: {:6.4f}\t Joint Acc: {:6.4f}\t Token Acc: {:6.4f}".format(ce.avg, acc.joi_acc, acc.tok_acc))
@@ -83,14 +83,12 @@ def main(args):
     with open(args.cache_dir / "vocab.pkl", "rb") as f:
         vocab: Vocab = pickle.load(f)
 
-    ckpt_dir = f"{args.checkpt_dir}/{args.name}"
+    ckpt_dir = args.ckpt_dir / f"{args.name}"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     tag_idx_path = args.cache_dir / "tag2idx.json"
-    tag_idx_path.mkdir(parents=True, exist_ok=True)
     tag2idx: Dict[str, int] = json.loads(tag_idx_path.read_text())
 
     data_paths = {split: args.data_dir / f"{split}.json" for split in SPLITS}
-    data_paths.mkdir(parents=True, exist_ok=True)
     data = {split: json.loads(path.read_text()) for split, path in data_paths.items()}
     datasets: Dict[str, SeqTaggingClsDataset] = {
         split: SeqTaggingClsDataset(split_data, vocab, tag2idx, args.max_len)
@@ -147,6 +145,7 @@ def parse_args() -> Namespace:
         help="Directory to save the model file.",
         default="./ckpt/slot/",
     )
+    parser.add_argument("--name", type=str, default="1012", )
 
     # data
     parser.add_argument("--max_len", type=int, default=128)

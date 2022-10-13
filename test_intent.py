@@ -24,7 +24,6 @@ def main(args):
         vocab: Vocab = pickle.load(f)
 
     intent_idx_path = args.cache_dir / "intent2idx.json"
-    intent_idx_path.mkdir(parents=True, exist_ok=True)
     intent2idx: Dict[str, int] = json.loads(intent_idx_path.read_text())
 
     data = json.loads(args.test_file.read_text())
@@ -60,7 +59,7 @@ def main(args):
 
     # TODO: write prediction to file (args.pred_file)
     if args.pred_file.parent:
-        args.pred_file.parent.mkdir(parent=True, exist_ok=True)
+        args.pred_file.parent.mkdir(parents=True, exist_ok=True)
     with open(args.pred_file, 'w') as f:
         f.write('id,intent\n')
         for id, label in zip(ids, labels):

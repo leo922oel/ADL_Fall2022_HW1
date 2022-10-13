@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from tqdm import trange, tqdm
 
 from dataset import SeqClsDataset
-from r11946013.model import SeqClassifier
+from model import SeqClassifier
 from utils import Vocab, CEMetrics, IntentMetrics
 
 from seqeval.metrics import classification_report
@@ -47,7 +47,7 @@ def train_epoch(args, model, dataloader, optim):
     return ce.avg, acc.acc
 
 @torch.no_grad()
-def validation(args, model, dataloader):
+def validation(args, model, dataloader, ):
     model.eval()
     ce = CEMetrics()
     acc = IntentMetrics()
@@ -60,15 +60,16 @@ def validation(args, model, dataloader):
 
         output = model(batch)
 
-        ground += batch["intent"]
-        pred += output["pred_labels"].tolist()
+        # ground += batch["intent"].detach().cpu().numpy().tolist()
+        # pred += output["pred_labels"].detach().cpu().numpy().tolist()
         ce.udpate(output["loss"], batch["intent"].size(0))
         acc.update(batch["intent"].detach().cpu(), output["pred_labels"].detach().cpu())
 
-    classification_report(ground, pred)
+    # dataloader.idx2label(ground)
+    # classification_report(dataloader.idx2label(ground), dataloader.idx2label(pred))
 
     acc.eval()
-    print("Train loss: {:6.4f}\t Acc: {:6.4f}".format(ce.avg, acc.acc))
+    print("Valid loss: {:6.4f}\t Acc: {:6.4f}".format(ce.avg, acc.acc))
     return ce.avg, acc.acc
 
 def main(args):
@@ -79,14 +80,12 @@ def main(args):
     with open(args.cache_dir / "vocab.pkl", "rb") as f:
         vocab: Vocab = pickle.load(f)
 
-    ckpt_dir = f"{args.checkpt_dir}/{args.name}"
+    ckpt_dir = args.ckpt_dir / f"{args.name}"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     intent_idx_path = args.cache_dir / "intent2idx.json"
-    intent_idx_path.mkdir(parents=True, exist_ok=True)
     intent2idx: Dict[str, int] = json.loads(intent_idx_path.read_text())
 
     data_paths = {split: args.data_dir / f"{split}.json" for split in SPLITS}
-    data_paths.mkdir(parents=True, exist_ok=True)
     data = {split: json.loads(path.read_text()) for split, path in data_paths.items()}
     datasets: Dict[str, SeqClsDataset] = {
         split: SeqClsDataset(split_data, vocab, intent2idx, args.max_len)
@@ -115,7 +114,7 @@ def main(args):
         # TODO: Evaluation loop - calculate accuracy and save model weights
         print(f"Epoch: {epoch}")
         train_ce, train_acc = train_epoch(args, model, dataloader[TRAIN], optimizer, )
-        val_ce, val_acc = validation(args, model, dataloader[DEV])
+        val_ce, val_acc = validation(args, model, dataloader[DEV], )
 
         ckpt_path = f"{ckpt_dir}/{epoch+1}-model.pth"
         best_path = f"{ckpt_dir}/best-model.pth"
@@ -147,6 +146,7 @@ def parse_args() -> Namespace:
         help="Directory to save the model file.",
         default="./ckpt/intent/",
     )
+    parser.add_argument("--name", type=str, default="1012", )
 
     # data
     parser.add_argument("--max_len", type=int, default=128)

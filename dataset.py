@@ -33,20 +33,20 @@ class SeqClsDataset(Dataset):
 
     def collate_fn(self, samples: List[Dict]) -> Dict:
         # TODO: implement collate_fn
-        sorted_samples = samples.sort(key=lambda s: len(s["text"].split()), )
+        samples.sort(key=lambda s: len(s["text"].split()), reverse=True)
         batch = {}
-        batch["text"] = [s["text"].split() for s in sorted_samples]
+        batch["text"] = [s["text"].split() for s in samples]
         batch["len"] = torch.tensor([min(len(s), self.max_len) for s in batch["text"]])
         batch["text"] = torch.tensor(
             self.vocab.encode_batch(batch["text"], self.max_len)
             )
-        batch["id"] = torch.tensor([s["id"] for s in sorted_samples])
-        if "intent" in sorted_samples.keys():
+        batch["id"] = [s["id"] for s in samples]
+        if "intent" in samples[0].keys():
             batch["intent"] = torch.tensor(
-                self.label2idx(s["intent"] for s in sorted_samples)
+                [self.label2idx(s["intent"]) for s in samples]
             )
         else: 
-            batch["intent"] = torch.zeros(len(sorted_samples), dtype=torch.uint8)
+            batch["intent"] = torch.zeros(len(samples), dtype=torch.long)
 
         return batch
 
@@ -70,19 +70,19 @@ class SeqTaggingClsDataset(SeqClsDataset):
 
     def collate_fn(self, samples):
         # TODO: implement collate_fn
-        sorted_samples = samples.sort(key=lambda s: len(s["tokens"]), )
+        samples.sort(key=lambda s: len(s["tokens"]), reverse=True)
         batch = {}
-        batch["tokens"] = [s["tokens"] for s in sorted_samples]
+        batch["tokens"] = [s["tokens"] for s in samples]
         batch["len"] = torch.tensor([min(len(s), self.max_len) for s in batch["tokens"]])
         batch["tokens"] = torch.tensor(
             self.vocab.encode_batch(batch["tokens"], self.max_len)
             )
-        batch["id"] = torch.tensor([s["id"] for s in sorted_samples])
-        if "tags" in sorted_samples.keys():
-            batch["tags"] = [[self.label2idx(t) for t in s["tags"]] for s in sorted_samples]
+        batch["id"] = [s["id"] for s in samples]
+        if "tags" in samples[0].keys():
+            batch["tags"] = [[self.label2idx(t) for t in s["tags"]] for s in samples]
             batch["tags"] = pad_to_len(batch["tags"], self.max_len, 0)
         else: 
-            batch["tags"] = [[0]*self.max_len] * len(sorted_samples)
+            batch["tags"] = [[0]*self.max_len] * len(samples)
         batch["tags"] = torch.tensor(batch["tags"])
         batch["mask"] = batch["tokens"].gt(0).float()
 
