@@ -1,10 +1,12 @@
 import json
 import pickle
 import random
+from turtle import color
 import numpy as np
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Dict
+import matplotlib.pyplot as plt
 
 import torch
 from torch.utils.data import DataLoader
@@ -52,21 +54,15 @@ def validation(args, model, dataloader, ):
     ce = CEMetrics()
     acc = IntentMetrics()
 
-    ground = []
-    pred = []
     for batch in dataloader:
         batch["text"] = batch["text"].to(args.device)
         batch["intent"] = batch["intent"].to(args.device)
 
         output = model(batch)
 
-        # ground += batch["intent"].detach().cpu().numpy().tolist()
-        # pred += output["pred_labels"].detach().cpu().numpy().tolist()
         ce.udpate(output["loss"], batch["intent"].size(0))
         acc.update(batch["intent"].detach().cpu(), output["pred_labels"].detach().cpu())
 
-    # dataloader.idx2label(ground)
-    # classification_report(dataloader.idx2label(ground), dataloader.idx2label(pred))
 
     acc.eval()
     print("Valid loss: {:6.4f}\t Acc: {:6.4f}".format(ce.avg, acc.acc))
@@ -100,7 +96,7 @@ def main(args):
     embeddings = torch.load(args.cache_dir / "embeddings.pt")
     # TODO: init model and move model to target device(cpu / gpu)
     model = SeqClassifier(embeddings, args.hidden_size, args.num_layers,
-            args.dropout, args.bidirectional, datasets[TRAIN].num_classes,).to(args.device)
+            args.dropout, args.bidirectional, datasets[TRAIN].num_classes, args.rnn_type).to(args.device)
 
     # TODO: init optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -108,6 +104,9 @@ def main(args):
     # optimizer = torch.optim.Adagrad(model.parameters(), lr=args.lr)
 
     best_acc = 0.0
+    best_iter = 0
+    train_acc_list = np.zeros(args.num_epoch)
+    val_acc_list = np.zeros(args.num_epoch)
     epoch_pbar = trange(args.num_epoch, desc="Epoch")
     for epoch in epoch_pbar:
         # TODO: Training loop - iterate over train dataloader and update model weights
@@ -115,16 +114,29 @@ def main(args):
         print(f"Epoch: {epoch}")
         train_ce, train_acc = train_epoch(args, model, dataloader[TRAIN], optimizer, )
         val_ce, val_acc = validation(args, model, dataloader[DEV], )
+        print(f"the best model ACC -- {best_acc}, epoch: {best_iter}")
 
         ckpt_path = f"{ckpt_dir}/{epoch+1}-model.pth"
         best_path = f"{ckpt_dir}/best-model.pth"
         torch.save(model.state_dict(), ckpt_path)
         if val_acc > best_acc:
             best_acc = val_acc
+            best_iter = epoch
             torch.save(model.state_dict(), best_path)
             print(f"Save model checkpoint -- {best_path}")
     # TODO: Inference on test set
 
+        train_acc_list[epoch] = train_acc
+        val_acc_list[epoch] = val_acc
+    """
+    plt.plot(train_acc_list, color="red", )
+    plt.plot(val_acc_list, color="blue", )
+    plt.title(f"{args.num_epoch} epochs with batch size={args.batch_size}")
+    plt.xlabel("epoch")
+    plt.ylabel("Accuracy")
+    plt.legend(("train", "valid"))
+    plt.savefig(f"./{args.batch_size}.png")
+    """
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
@@ -156,6 +168,7 @@ def parse_args() -> Namespace:
     parser.add_argument("--num_layers", type=int, default=2)
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--bidirectional", type=bool, default=True)
+    parser.add_argument("--rnn_type", type=str, default="LSTM")
 
     # optimizer
     parser.add_argument("--lr", type=float, default=1e-3)

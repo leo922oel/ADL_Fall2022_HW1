@@ -40,6 +40,7 @@ def main(args):
         args.dropout,
         args.bidirectional,
         dataset.num_classes,
+        args.rnn_type,
     ).to(args.device)
     model.eval()
 
@@ -56,6 +57,11 @@ def main(args):
         output = model(batch)
         ids += batch["id"]
         labels += output["pred_labels"].tolist()
+
+    int_ids = [int(id[5:]) for id in ids]
+    labels = [i for _, i in sorted(zip(int_ids, labels),)]
+    int_ids.sort()
+    ids = [("test-"+str(id)) for id in int_ids]
 
     # TODO: write prediction to file (args.pred_file)
     if args.pred_file.parent:
@@ -97,6 +103,7 @@ def parse_args() -> Namespace:
     parser.add_argument("--num_layers", type=int, default=2)
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--bidirectional", type=bool, default=True)
+    parser.add_argument("--rnn_type", type=str, default="LSTM")
 
     # data loader
     parser.add_argument("--batch_size", type=int, default=128)

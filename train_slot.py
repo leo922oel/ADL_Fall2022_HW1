@@ -50,13 +50,14 @@ def train_epoch(args, model, dataloader, optim):
     return ce.avg, acc.joi_acc, acc.tok_acc
 
 @torch.no_grad()
-def validation(args, model, dataloader):
+def validation(args, model, dataloader, datasets):
     model.eval()
     ce = CEMetrics()
     acc = SlotMetrics()
 
-    ground = []
-    pred = []
+    ids = []
+    tags = []
+    lens = []
     for batch in dataloader:
         batch["tokens"] = batch["tokens"].to(args.device)
         batch["tags"] = batch["tags"].to(args.device)
@@ -64,13 +65,27 @@ def validation(args, model, dataloader):
 
         output = model(batch)
 
-        # ground += batch["tags"].tolist()
-        # pred += output["pred_labels"].cpu().tolist()
+        ids += batch["id"]
+        tags += output["pred_labels"].cpu().tolist()
+        lens += batch["mask"].sum(-1).long().cpu().tolist()
         ce.udpate(output["loss"], batch["tokens"].size(0))
         acc.update(batch["tags"].cpu(), output["pred_labels"].cpu(), batch["mask"].cpu())
 
-    # classification_report(ground, pred)
-
+    int_ids = [int(id[5:]) for id in ids]
+    tags = [i for _, i in sorted(zip(int_ids, tags),)]
+    lens = [i for _, i in sorted(zip(int_ids, lens),)]
+    int_ids.sort()
+    ids = [str(id) for id in int_ids]
+    with open("./eval.csv", 'w') as f:
+        f.write('id,tags\n')
+        for id, tag, len in zip(ids, tags, lens):
+            f.write("%s," %(id))
+            for idx, t in enumerate(tag):
+                if idx < len-1:
+                    f.write("%s " %(datasets.idx2label(t)))
+                else:
+                    f.write("%s\n" %(datasets.idx2label(t)))
+                    break
     acc.eval()
     print("Train loss: {:6.4f}\t Joint Acc: {:6.4f}\t Token Acc: {:6.4f}".format(ce.avg, acc.joi_acc, acc.tok_acc))
     return ce.avg, acc.joi_acc, acc.tok_acc
@@ -102,25 +117,28 @@ def main(args):
 
     embeddings = torch.load(args.cache_dir / "embeddings.pt")
     # TODO: init model and move model to target device(cpu / gpu)
-    model = SeqTagger(embeddings, args.hidden_size, args.num_layers,
-            args.dropout, args.bidirectional, datasets[TRAIN].num_classes,).to(args.device)
+    model = SeqTagger(embeddings, args.hidden_size, args.cnn_num_layers, args.rnn_num_layers,
+            args.dropout, args.bidirectional, datasets[TRAIN].num_classes, args.rnn_type).to(args.device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
     # optimizer = torch.optim.Adagrad(model.parameters(), lr=args.lr)
 
     best_acc = 0.0
+    best_iter = 0
     epoch_pbar = trange(args.num_epoch, desc="Epoch")
     for epoch in epoch_pbar:
         print(f"Epoch: {epoch}")
         train_ce, train_joi_acc, train_tok_acc = train_epoch(args, model, dataloader[TRAIN], optimizer, )
-        val_ce, val_joi_acc, val_tok_acc = validation(args, model, dataloader[DEV])
+        val_ce, val_joi_acc, val_tok_acc = validation(args, model, dataloader[DEV], datasets[DEV])
+        print(f"the best model ACC -- {best_acc}, epoch: {best_iter}")
 
         ckpt_path = f"{ckpt_dir}/{epoch+1}-model.pth"
         best_path = f"{ckpt_dir}/best-model.pth"
         torch.save(model.state_dict(), ckpt_path)
         if val_joi_acc > best_acc:
             best_acc = val_joi_acc
+            best_iter = epoch
             torch.save(model.state_dict(), best_path)
             print(f"Save model checkpoint -- {best_path}")
 
@@ -152,9 +170,11 @@ def parse_args() -> Namespace:
 
     # model
     parser.add_argument("--hidden_size", type=int, default=512)
-    parser.add_argument("--num_layers", type=int, default=2)
+    parser.add_argument("--cnn_num_layers", type=int, default=2)
+    parser.add_argument("--rnn_num_layers", type=int, default=2)
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--bidirectional", type=bool, default=True)
+    parser.add_argument("--rnn_type", type=str, default="LSTM")
 
     # optimizer
     parser.add_argument("--lr", type=float, default=1e-3)
