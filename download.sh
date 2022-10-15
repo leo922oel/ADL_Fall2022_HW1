@@ -1,0 +1,2 @@
+wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=1TDAJD34clh9iWjHil9wdEXGi641T5i6-' -O best-intent.pth
+wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=1CviHt3FCS36LvgzJhy6uRvwPdhmUXwK8' -O best-slot.pth
